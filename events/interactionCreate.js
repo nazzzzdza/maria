@@ -20,14 +20,13 @@ name: "interactionCreate",
 async execute(interaction, client) {
 
 
-// ================= COMMANDS =================
 if (interaction.isChatInputCommand()) {
   const cmd = client.commands.get(interaction.commandName);
   if (!cmd) return;
   return cmd.execute(interaction, client);
 }
 
-// ================= TICKET CREATE =================
+// ================= PANEL =================
 if (interaction.isStringSelectMenu() && interaction.customId === "ticket_select") {
 
   await interaction.deferReply({ ephemeral: true });
@@ -40,54 +39,19 @@ if (interaction.isStringSelectMenu() && interaction.customId === "ticket_select"
     type: ChannelType.GuildText,
     parent: CATEGORY_ID,
     permissionOverwrites: [
-      {
-        id: interaction.guild.id,
-        deny: [PermissionsBitField.Flags.ViewChannel]
-      },
-      {
-        id: user.id,
-        allow: [
-          PermissionsBitField.Flags.ViewChannel,
-          PermissionsBitField.Flags.SendMessages,
-          PermissionsBitField.Flags.ReadMessageHistory
-        ]
-      },
-      {
-        id: STAFF_ROLE_ID,
-        allow: [
-          PermissionsBitField.Flags.ViewChannel,
-          PermissionsBitField.Flags.SendMessages,
-          PermissionsBitField.Flags.ReadMessageHistory
-        ]
-      }
+      { id: interaction.guild.id, deny: [PermissionsBitField.Flags.ViewChannel] },
+      { id: user.id, allow: [PermissionsBitField.Flags.ViewChannel, PermissionsBitField.Flags.SendMessages] },
+      { id: STAFF_ROLE_ID, allow: [PermissionsBitField.Flags.ViewChannel, PermissionsBitField.Flags.SendMessages] }
     ]
   });
 
   const embed = new EmbedBuilder()
     .setColor("#1c1d23")
-    .setDescription(
-
-
-`.　  ✦　  ˚  　⊹  　˖　  ❜
-(˶•ᴗ•)⌒)ↄ   ❥୧    welcome
-
-_ _      ˚❒ ⠀ ⤷☒⠀⠀𖨂🍓
-submit your order below
-
-.　  ✦　  ˚  　⊹  　˖　  ❜`
-);
-
+    .setDescription("ticket opened. use submit order below");
 
   const row = new ActionRowBuilder().addComponents(
-    new ButtonBuilder()
-      .setCustomId("submit_order")
-      .setLabel("submit order")
-      .setStyle(ButtonStyle.Secondary),
-
-    new ButtonBuilder()
-      .setCustomId("close_ticket")
-      .setLabel("close")
-      .setStyle(ButtonStyle.Secondary)
+    new ButtonBuilder().setCustomId("submit_order").setLabel("submit order").setStyle(ButtonStyle.Secondary),
+    new ButtonBuilder().setCustomId("close_ticket").setLabel("close").setStyle(ButtonStyle.Secondary)
   );
 
   await channel.send({
@@ -96,55 +60,35 @@ submit your order below
     components: [row]
   });
 
-  return interaction.editReply({
-    content: `ticket created: ${channel}`
-  });
+  return interaction.editReply({ content: `ticket created: ${channel}` });
 }
 
-// ================= SUBMIT ORDER =================
+// ================= MODAL OPEN =================
 if (interaction.isButton() && interaction.customId === "submit_order") {
 
   const modal = new ModalBuilder()
     .setCustomId("order_modal")
     .setTitle("order form");
 
-  const buying = new TextInputBuilder()
-    .setCustomId("buying")
-    .setLabel("buying")
-    .setStyle(TextInputStyle.Short)
-    .setRequired(true);
+  const fields = [
+    { id: "buying", label: "buying" },
+    { id: "theme", label: "theme" },
+    { id: "style", label: "style" },
+    { id: "mop", label: "mop" },
+    { id: "notes", label: "notes", optional: true }
+  ];
 
-  const theme = new TextInputBuilder()
-    .setCustomId("theme")
-    .setLabel("theme")
-    .setStyle(TextInputStyle.Short)
-    .setRequired(true);
-
-  const style = new TextInputBuilder()
-    .setCustomId("style")
-    .setLabel("style")
-    .setStyle(TextInputStyle.Short)
-    .setRequired(true);
-
-  const mop = new TextInputBuilder()
-    .setCustomId("mop")
-    .setLabel("mop")
-    .setStyle(TextInputStyle.Short)
-    .setRequired(true);
-
-  const notes = new TextInputBuilder()
-    .setCustomId("notes")
-    .setLabel("notes")
-    .setStyle(TextInputStyle.Paragraph)
-    .setRequired(false);
-
-  modal.addComponents(
-    new ActionRowBuilder().addComponents(buying),
-    new ActionRowBuilder().addComponents(theme),
-    new ActionRowBuilder().addComponents(style),
-    new ActionRowBuilder().addComponents(mop),
-    new ActionRowBuilder().addComponents(notes)
+  const rows = fields.map(f =>
+    new ActionRowBuilder().addComponents(
+      new TextInputBuilder()
+        .setCustomId(f.id)
+        .setLabel(f.label)
+        .setStyle(f.id === "notes" ? TextInputStyle.Paragraph : TextInputStyle.Short)
+        .setRequired(!f.optional)
+    )
   );
+
+  modal.addComponents(...rows);
 
   return interaction.showModal(modal);
 }
@@ -152,94 +96,52 @@ if (interaction.isButton() && interaction.customId === "submit_order") {
 // ================= MODAL SUBMIT =================
 if (interaction.isModalSubmit() && interaction.customId === "order_modal") {
 
-  const buying = interaction.fields.getTextInputValue("buying");
-  const theme = interaction.fields.getTextInputValue("theme");
-  const style = interaction.fields.getTextInputValue("style");
-  const mop = interaction.fields.getTextInputValue("mop");
-  const notes = interaction.fields.getTextInputValue("notes") || "none";
+  const data = {
+    buying: interaction.fields.getTextInputValue("buying"),
+    theme: interaction.fields.getTextInputValue("theme"),
+    style: interaction.fields.getTextInputValue("style"),
+    mop: interaction.fields.getTextInputValue("mop"),
+    notes: interaction.fields.getTextInputValue("notes") || "none"
+  };
+
+  const description =
+
+
+`_ _   ⁺  ⌦　　𓈒  𖨂໑  ˖ _ _           ❛ ❒　🎹 𓂅　  order for <@${interaction.user.id}>
+-# _ _   ${interaction.user.username}'s order
+-# _ _   ticket system _ _　˙ 　　　　.　　　˚　　　　۫ _ _            ＋　❛　▦ 　❀　  buying: ${data.buying} _ _            ＋　❛　▦ 　❀　  theme: ${data.theme} _ _            ＋　❛　▦ 　❀　  style: ${data.style} _ _            ＋　❛　▦ 　❀　  mop: ${data.mop} _ _            ＋　❛　▦ 　❀　  notes: ${data.notes}`;
+
 
   const embed = new EmbedBuilder()
     .setColor("#1c1d23")
-    .setDescription(
-
-
-`_ _   ⁺  ⌦　　𓈒  𖨂໑  ˖ _ _           ❛ ❒　\`🎹` 𓂅　  order   for   <@${interaction.user.id}>
--# _ _   ${interaction.user.username}'s   order,   do `.done`  now
--# _ _     ticket
-_ _　˙ 　　　　.　　　˚　　　　۫  　 𓈒
-_ _            ＋　❛　▦ 　❀　  **buying:** ${buying}
-_ _ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎‎  ◝ ✧𓂅    `🎬`    ,    **theme:**  ${theme}
-_ _            ＋　❛　▦ 　❀　  **style:** ${style}
-_ _ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎‎  ◝ ✧𓂅    `🎤`    ,    **mop:**   ${mop}
-_ _            ＋　❛　▦ 　❀　  **notes:** ${notes}
-_ _　˙ 　　　　.　　　˚　　　　۫  　 𓈒`
-);
-
+    .setDescription(description);
 
   const row = new ActionRowBuilder().addComponents(
-    new ButtonBuilder()
-      .setCustomId("edit_order")
-      .setLabel("edit")
-      .setStyle(ButtonStyle.Secondary),
-
-    new ButtonBuilder()
-      .setCustomId("approve_order")
-      .setLabel("approve")
-      .setStyle(ButtonStyle.Secondary)
+    new ButtonBuilder().setCustomId("edit_order").setLabel("edit").setStyle(ButtonStyle.Secondary),
+    new ButtonBuilder().setCustomId("approve_order").setLabel("approve").setStyle(ButtonStyle.Secondary)
   );
 
-  await interaction.channel.send({
-    embeds: [embed],
-    components: [row]
-  });
+  await interaction.channel.send({ embeds: [embed], components: [row] });
 
-  return interaction.reply({
-    content: "order submitted",
-    ephemeral: true
-  });
-}
-
-// ================= EDIT ORDER =================
-if (interaction.isButton() && interaction.customId === "edit_order") {
-  return interaction.showModal(
-    new ModalBuilder()
-      .setCustomId("order_modal")
-      .setTitle("edit order")
-      .addComponents(
-        new ActionRowBuilder().addComponents(
-          new TextInputBuilder().setCustomId("buying").setLabel("buying").setStyle(TextInputStyle.Short).setRequired(true)
-        ),
-        new ActionRowBuilder().addComponents(
-          new TextInputBuilder().setCustomId("theme").setLabel("theme").setStyle(TextInputStyle.Short).setRequired(true)
-        ),
-        new ActionRowBuilder().addComponents(
-          new TextInputBuilder().setCustomId("style").setLabel("style").setStyle(TextInputStyle.Short).setRequired(true)
-        ),
-        new ActionRowBuilder().addComponents(
-          new TextInputBuilder().setCustomId("mop").setLabel("mop").setStyle(TextInputStyle.Short).setRequired(true)
-        ),
-        new ActionRowBuilder().addComponents(
-          new TextInputBuilder().setCustomId("notes").setLabel("notes").setStyle(TextInputStyle.Paragraph).setRequired(false)
-        )
-      )
-  );
+  return interaction.reply({ content: "order submitted", ephemeral: true });
 }
 
 // ================= APPROVE =================
 if (interaction.isButton() && interaction.customId === "approve_order") {
 
   if (!interaction.member.roles.cache.has(STAFF_ROLE_ID)) {
-    return interaction.reply({
-      content: "you cannot approve orders",
-      ephemeral: true
-    });
+    return interaction.reply({ content: "no permission", ephemeral: true });
   }
 
-  const queueChannel = await interaction.guild.channels.fetch(QUEUE_CHANNEL_ID);
+  const queue = await interaction.guild.channels.fetch(QUEUE_CHANNEL_ID);
 
-  await queueChannel.send({
-    content: `new order from <@${interaction.user.id}>`,
-    embeds: interaction.message.embeds
+  const approvedEmbed = EmbedBuilder.from(interaction.message.embeds[0])
+    .setColor("#1c1d23")
+    .setDescription(interaction.message.embeds[0].description + "\n\nstatus: approved");
+
+  await queue.send({
+    content: `new approved order from <@${interaction.user.id}>`,
+    embeds: [approvedEmbed]
   });
 
   return interaction.update({
@@ -250,7 +152,6 @@ if (interaction.isButton() && interaction.customId === "approve_order") {
 
 // ================= CLOSE =================
 if (interaction.isButton() && interaction.customId === "close_ticket") {
-
   return interaction.reply({
     content: "are you sure?",
     ephemeral: true,
@@ -268,10 +169,7 @@ if (interaction.customId === "close_yes") {
 }
 
 if (interaction.customId === "close_no") {
-  return interaction.reply({
-    content: "cancelled",
-    ephemeral: true
-  });
+  return interaction.reply({ content: "cancelled", ephemeral: true });
 }
 
 
