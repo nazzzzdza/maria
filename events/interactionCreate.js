@@ -1,9 +1,9 @@
 const {
-  ActionRowBuilder,
-  ButtonBuilder,
-  ButtonStyle,
-  PermissionsBitField,
-  ChannelType
+ActionRowBuilder,
+ButtonBuilder,
+ButtonStyle,
+ChannelType,
+PermissionFlagsBits
 } = require("discord.js");
 
 const CATEGORY_ID = "1387525349797269666";
@@ -11,112 +11,146 @@ const STAFF_ROLE_ID = "1500489431918837861";
 const BOT_ROLE_ID = "1439161768223182859";
 
 module.exports = {
-  name: "interactionCreate",
+name: "interactionCreate",
 
-  async execute(interaction, client) {
+async execute(interaction, client) {
 
-    // COMMAND HANDLER
-    if (interaction.isChatInputCommand()) {
-      const cmd = client.commands.get(interaction.commandName);
-      if (!cmd) return;
-      return cmd.execute(interaction, client);
-    }
 
-    // DROPDOWN → TICKET CREATE (SAFE)
-    if (interaction.isStringSelectMenu() && interaction.customId === "ticket_select") {
+// COMMANDS
+if (interaction.isChatInputCommand()) {
+  const cmd = client.commands.get(interaction.commandName);
+  if (!cmd) return;
+  return cmd.execute(interaction, client);
+}
 
-      await interaction.deferReply({ ephemeral: true });
+// TICKET DROPDOWN
+if (
+  interaction.isStringSelectMenu() &&
+  interaction.customId === "ticket_select"
+) {
 
-      const type = interaction.values[0];
-      const user = interaction.user;
+  await interaction.deferReply({ ephemeral: true });
 
-      try {
-        const channel = await interaction.guild.channels.create({
-          name: `${type}-${user.username}`.toLowerCase(),
-          type: ChannelType.GuildText,
-          parent: CATEGORY_ID,
-          permissionOverwrites: [
-            {
-              id: interaction.guild.id,
-              deny: [PermissionsBitField.Flags.ViewChannel]
-            },
-            {
-              id: user.id,
-              allow: [
-                PermissionsBitField.Flags.ViewChannel,
-                PermissionsBitField.Flags.SendMessages,
-                PermissionsBitField.Flags.ReadMessageHistory
-              ]
-            },
-            {
-              id: STAFF_ROLE_ID,
-              allow: [
-                PermissionsBitField.Flags.ViewChannel,
-                PermissionsBitField.Flags.SendMessages
-              ]
-            },
-            {
-              id: BOT_ROLE_ID,
-              allow: [PermissionsBitField.Flags.ViewChannel]
-            }
-          ]
-        });
+  try {
 
-        const row = new ActionRowBuilder().addComponents(
-          new ButtonBuilder()
-            .setCustomId("close_ticket")
-            .setLabel("Close")
-            .setStyle(ButtonStyle.Secondary)
-        );
+    const type = interaction.values[0];
+    const user = interaction.user;
 
-        await channel.send({
-          content: `🎫 Ticket opened for <@${user.id}>`,
-          components: [row]
-        });
+    const channel = await interaction.guild.channels.create({
+      name: `${type}-${user.username}`.toLowerCase(),
+      type: ChannelType.GuildText,
+      parent: CATEGORY_ID
+    });
 
-        return interaction.editReply({
-          content: `Ticket created: ${channel}`
-        });
-
-      } catch (err) {
-        console.error("TICKET ERROR:", err);
-
-        return interaction.editReply({
-          content: "❌ Failed to create ticket. Check bot permissions."
-        });
+    await channel.permissionOverwrites.edit(
+      interaction.guild.id,
+      {
+        ViewChannel: false
       }
-    }
+    );
 
-    // CLOSE BUTTON
-    if (interaction.isButton() && interaction.customId === "close_ticket") {
+    await channel.permissionOverwrites.edit(
+      user.id,
+      {
+        ViewChannel: true,
+        SendMessages: true,
+        ReadMessageHistory: true
+      }
+    );
 
-      return interaction.reply({
-        content: "Are you sure you want to close this ticket?",
-        ephemeral: true,
-        components: [
-          new ActionRowBuilder().addComponents(
-            new ButtonBuilder()
-              .setCustomId("close_yes")
-              .setLabel("Yes")
-              .setStyle(ButtonStyle.Danger),
-            new ButtonBuilder()
-              .setCustomId("close_no")
-              .setLabel("No")
-              .setStyle(ButtonStyle.Secondary)
-          )
-        ]
-      });
-    }
+    await channel.permissionOverwrites.edit(
+      STAFF_ROLE_ID,
+      {
+        ViewChannel: true,
+        SendMessages: true
+      }
+    );
 
-    if (interaction.customId === "close_yes") {
-      return interaction.channel.delete().catch(() => {});
-    }
+    await channel.permissionOverwrites.edit(
+      BOT_ROLE_ID,
+      {
+        ViewChannel: true
+      }
+    );
 
-    if (interaction.customId === "close_no") {
-      return interaction.reply({
-        content: "Cancelled",
-        ephemeral: true
-      });
-    }
+    const row = new ActionRowBuilder().addComponents(
+      new ButtonBuilder()
+        .setCustomId("close_ticket")
+        .setLabel("Close")
+        .setStyle(ButtonStyle.Secondary)
+    );
+
+    await channel.send({
+      content: "please type `.text` to start your order",
+      components: [row]
+    });
+
+    await interaction.editReply({
+      content: `Ticket created: ${channel}`
+    });
+
+  } catch (err) {
+
+    console.error("TICKET ERROR:", err);
+
+    await interaction.editReply({
+      content: `❌ Ticket creation failed.\n\n${err.message}`
+    }).catch(() => {});
   }
+
+  return;
+}
+
+// CLOSE BUTTON
+if (
+  interaction.isButton() &&
+  interaction.customId === "close_ticket"
+) {
+
+  return interaction.reply({
+    content: "Are you sure?",
+    ephemeral: true,
+    components: [
+      new ActionRowBuilder().addComponents(
+        new ButtonBuilder()
+          .setCustomId("close_yes")
+          .setLabel("Yes")
+          .setStyle(ButtonStyle.Danger),
+
+        new ButtonBuilder()
+          .setCustomId("close_no")
+          .setLabel("No")
+          .setStyle(ButtonStyle.Secondary)
+      )
+    ]
+  });
+}
+
+// CONFIRM DELETE
+if (
+  interaction.isButton() &&
+  interaction.customId === "close_yes"
+) {
+
+  await interaction.reply({
+    content: "Closing ticket...",
+    ephemeral: true
+  });
+
+  return interaction.channel.delete().catch(() => {});
+}
+
+// CANCEL DELETE
+if (
+  interaction.isButton() &&
+  interaction.customId === "close_no"
+) {
+
+  return interaction.reply({
+    content: "Cancelled",
+    ephemeral: true
+  });
+}
+
+}
 };
