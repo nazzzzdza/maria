@@ -2,13 +2,11 @@ const {
 ActionRowBuilder,
 ButtonBuilder,
 ButtonStyle,
-ChannelType,
-PermissionFlagsBits
+ChannelType
 } = require("discord.js");
 
 const CATEGORY_ID = "1387525349797269666";
 const STAFF_ROLE_ID = "1500489431918837861";
-const BOT_ROLE_ID = "1439161768223182859";
 
 module.exports = {
 name: "interactionCreate",
@@ -16,7 +14,7 @@ name: "interactionCreate",
 async execute(interaction, client) {
 
 
-// COMMANDS
+// COMMAND HANDLER
 if (interaction.isChatInputCommand()) {
   const cmd = client.commands.get(interaction.commandName);
   if (!cmd) return;
@@ -42,6 +40,7 @@ if (
       parent: CATEGORY_ID
     });
 
+    // Hide from everyone
     await channel.permissionOverwrites.edit(
       interaction.guild.id,
       {
@@ -49,6 +48,7 @@ if (
       }
     );
 
+    // Ticket creator
     await channel.permissionOverwrites.edit(
       user.id,
       {
@@ -58,18 +58,13 @@ if (
       }
     );
 
+    // Staff role
     await channel.permissionOverwrites.edit(
       STAFF_ROLE_ID,
       {
         ViewChannel: true,
-        SendMessages: true
-      }
-    );
-
-    await channel.permissionOverwrites.edit(
-      BOT_ROLE_ID,
-      {
-        ViewChannel: true
+        SendMessages: true,
+        ReadMessageHistory: true
       }
     );
 
@@ -94,7 +89,7 @@ if (
     console.error("TICKET ERROR:", err);
 
     await interaction.editReply({
-      content: `❌ Ticket creation failed.\n\n${err.message}`
+      content: "❌ Failed to create ticket."
     }).catch(() => {});
   }
 
