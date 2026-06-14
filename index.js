@@ -9,17 +9,23 @@ ActionRowBuilder,
 StringSelectMenuBuilder,
 ButtonBuilder,
 ButtonStyle,
-PermissionsBitField
+PermissionsBitField,
+REST,
+Routes,
+SlashCommandBuilder
 } = require("discord.js");
 
 const { createClient } = require("@supabase/supabase-js");
 
+// ================= EXPRESS =================
 const app = express();
 app.get("/", (_, res) => res.send("Bot online"));
 app.listen(3000, () => console.log("Web server running"));
 
 // ================= CONFIG =================
 const TOKEN = process.env.TOKEN;
+const CLIENT_ID = process.env.CLIENT_ID;
+const GUILD_ID = process.env.GUILD_ID;
 
 const PANEL_CHANNEL_ID = "1407109105079943289";
 const CATEGORY_ID = "1387525349797269666";
@@ -46,34 +52,62 @@ GatewayIntentBits.MessageContent
 partials: [Partials.Channel]
 });
 
+// ================= SLASH COMMANDS =================
+const commands = [
+new SlashCommandBuilder()
+.setName("panel")
+.setDescription("Send ticket panel"),
+
+new SlashCommandBuilder()
+.setName("queue")
+.setDescription("Create queue entry")
+.addUserOption(o => o.setName("user").setDescription("User").setRequired(true))
+.addChannelOption(o => o.setName("ticket").setDescription("Ticket channel").setRequired(true))
+.addStringOption(o => o.setName("buying").setRequired(true))
+.addStringOption(o => o.setName("theme").setRequired(true))
+.addStringOption(o => o.setName("style").setRequired(true))
+.addStringOption(o => o.setName("mop").setRequired(true))
+.addStringOption(o => o.setName("notes").setRequired(true))
+].map(c => c.toJSON());
+
 // ================= READY =================
 client.once("ready", async () => {
 console.log(`Logged in as ${client.user.tag}`);
 
-// ⭐ CUSTOM STREAMING STATUS (YOUR TEXT HERE)
+// STATUS (STREAMING)
 client.user.setPresence({
 activities: [
 {
-name: "your orders & tickets",
-type: 1, // STREAMING
+name: "handling commissions",
+type: 1,
 url: "https://twitch.tv/discord"
 }
 ],
 status: "online"
 });
+
+// AUTO REGISTER COMMANDS (NO MORE MANUAL DEPLOY)
+const rest = new REST({ version: "10" }).setToken(TOKEN);
+
+await rest.put(
+Routes.applicationGuildCommands(CLIENT_ID, GUILD_ID),
+{ body: commands }
+);
+
+console.log("Slash commands registered");
 });
 
 // ================= INTERACTIONS =================
 client.on("interactionCreate", async (interaction) => {
 
-// ================= PANEL COMMAND =================
+// PANEL
 if (interaction.isChatInputCommand() && interaction.commandName === "panel") {
 
 ```
 const row = new ActionRowBuilder().addComponents(
   new StringSelectMenuBuilder()
     .setCustomId("ticket_select")
-    .setPlaceholder("open a ticket")
+    .setPlaceholder("Open ticket")
     .addOptions([
       { label: "Buying", value: "buying" },
       { label: "Linking", value: "linking" }
@@ -81,14 +115,14 @@ const row = new ActionRowBuilder().addComponents(
 );
 
 return interaction.reply({
-  content: "ticket panel",
+  content: "Ticket panel",
   components: [row]
 });
 ```
 
 }
 
-// ================= TICKET CREATE =================
+// TICKET CREATE
 if (interaction.isStringSelectMenu() && interaction.customId === "ticket_select") {
 
 ```
@@ -101,9 +135,9 @@ const existing = await supabase
   .eq("user_id", user.id)
   .eq("open", true);
 
-if (existing.data && existing.data.length > 0) {
+if (existing.data?.length > 0) {
   return interaction.reply({
-    content: "you already have a ticket open",
+    content: "You already have a ticket open",
     ephemeral: true
   });
 }
@@ -144,7 +178,7 @@ await supabase.from("tickets").insert({
   open: true
 });
 
-const closeBtn = new ActionRowBuilder().addComponents(
+const row = new ActionRowBuilder().addComponents(
   new ButtonBuilder()
     .setCustomId("close_ticket")
     .setLabel("Close")
@@ -153,35 +187,35 @@ const closeBtn = new ActionRowBuilder().addComponents(
 
 await channel.send({
   content: "please type `.text` to start your order",
-  components: [closeBtn]
+  components: [row]
 });
 
 return interaction.reply({
-  content: "ticket created",
+  content: "Ticket created",
   ephemeral: true
 });
 ```
 
 }
 
-// ================= CLOSE TICKET =================
+// CLOSE BUTTON
 if (interaction.isButton() && interaction.customId === "close_ticket") {
 
 ```
 const row = new ActionRowBuilder().addComponents(
   new ButtonBuilder()
-    .setCustomId("confirm_close_yes")
+    .setCustomId("close_yes")
     .setLabel("Yes")
     .setStyle(ButtonStyle.Danger),
 
   new ButtonBuilder()
-    .setCustomId("confirm_close_no")
+    .setCustomId("close_no")
     .setLabel("No")
     .setStyle(ButtonStyle.Secondary)
 );
 
 return interaction.reply({
-  content: "Are you sure you want to close this ticket?",
+  content: "Are you sure?",
   components: [row],
   ephemeral: true
 });
@@ -189,8 +223,7 @@ return interaction.reply({
 
 }
 
-// ================= CONFIRM CLOSE =================
-if (interaction.isButton() && interaction.customId === "confirm_close_yes") {
+if (interaction.customId === "close_yes") {
 
 ```
 await supabase
@@ -203,14 +236,67 @@ await interaction.channel.delete().catch(() => {});
 
 }
 
-if (interaction.isButton() && interaction.customId === "confirm_close_no") {
+if (interaction.customId === "close_no") {
 return interaction.reply({
-content: "cancelled",
+content: "Cancelled",
 ephemeral: true
 });
 }
 
-// ================= QUEUE BUTTONS =================
+// QUEUE COMMAND
+if (interaction.isChatInputCommand() && interaction.commandName === "queue") {
+
+```
+const user = interaction.options.getUser("user");
+const ticket = interaction.options.getChannel("ticket");
+
+const buying = interaction.options.getString("buying");
+const theme = interaction.options.getString("theme");
+const style = interaction.options.getString("style");
+const mop = interaction.options.getString("mop");
+const notes = interaction.options.getString("notes");
+
+const queueChannel = await interaction.guild.channels.fetch(QUEUE_CHANNEL_ID);
+
+const row = new ActionRowBuilder().addComponents(
+  new ButtonBuilder().setCustomId("queue_noted").setLabel("Noted").setStyle(ButtonStyle.Secondary),
+  new ButtonBuilder().setCustomId("queue_processing").setLabel("Processing").setStyle(ButtonStyle.Secondary),
+  new ButtonBuilder().setCustomId("queue_completed").setLabel("Completed").setStyle(ButtonStyle.Success)
+);
+
+const msg =
+```
+
+`order for ${user}
+ticket: ${ticket}
+buying: ${buying}
+theme: ${theme}
+style: ${style}
+mop: ${mop}
+notes: ${notes}`;
+
+```
+const sent = await queueChannel.send({
+  content: msg,
+  components: [row]
+});
+
+await supabase.from("queues").insert({
+  user_id: user.id,
+  ticket_channel_id: ticket.id,
+  message_id: sent.id,
+  open: true
+});
+
+return interaction.reply({
+  content: "Queue created",
+  ephemeral: true
+});
+```
+
+}
+
+// QUEUE BUTTONS
 if (interaction.isButton()) {
 
 ```
@@ -224,12 +310,12 @@ if (interaction.customId === "queue_completed") status = "completed";
 
 if (!status) return;
 
+await interaction.deferUpdate();
+
 await supabase
   .from("queues")
   .update({ status })
   .eq("message_id", interaction.message.id);
-
-await interaction.deferUpdate();
 
 if (status === "completed") {
 
@@ -244,7 +330,7 @@ if (status === "completed") {
   const channel = await client.channels.fetch(data.ticket_channel_id);
   const user = await client.users.fetch(data.user_id);
 
-channel.send("your order has been completed " + user);
+  channel.send("your order has been completed " + user);
 }
 ```
 
