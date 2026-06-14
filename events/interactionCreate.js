@@ -225,16 +225,32 @@ status: pending approval`
 };
 
 
+  const row = new (require("discord.js").ActionRowBuilder)().addComponents(
+    new (require("discord.js").ButtonBuilder)()
+      .setCustomId("edit_order")
+      .setLabel("edit")
+      .setStyle(2),
+
+    new (require("discord.js").ButtonBuilder)()
+      .setCustomId("approve_order")
+      .setLabel("approve")
+      .setStyle(2),
+
+    new (require("discord.js").ButtonBuilder)()
+      .setCustomId("close_ticket")
+      .setLabel("close")
+      .setStyle(2)
+  );
+
+  const msg = await interaction.channel.send({
+    embeds: [embed],
+    components: [row]
+  });
+
   return interaction.reply({
-    content: "order submitted successfully",
+    content: "order submitted",
     ephemeral: true
-  }).then(async () => {
-
-    await interaction.channel.send({
-      embeds: [embed]
-    });
-
-  }).catch(() => {});
+  });
 }
 
   
