@@ -244,7 +244,7 @@ if (status === "completed") {
   const channel = await client.channels.fetch(data.ticket_channel_id);
   const user = await client.users.fetch(data.user_id);
 
-  channel.send(`your order has been completed ${user}`);
+channel.send("your order has been completed " + user);
 }
 ```
 
