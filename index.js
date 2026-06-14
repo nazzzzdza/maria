@@ -60,14 +60,28 @@ new SlashCommandBuilder()
 new SlashCommandBuilder()
 .setName("queue")
 .setDescription("Create queue entry")
-.addUserOption(o => o.setName("user").setDescription("User").setRequired(true))
-.addChannelOption(o => o.setName("ticket").setDescription("Ticket channel").setRequired(true))
-.addStringOption(o => o.setName("buying").setDescription("Buying").setRequired(true))
-.addStringOption(o => o.setName("theme").setDescription("Theme").setRequired(true))
-.addStringOption(o => o.setName("style").setDescription("Style").setRequired(true))
-.addStringOption(o => o.setName("mop").setDescription("MOP").setRequired(true))
-.addStringOption(o => o.setName("notes").setDescription("Notes").setRequired(true))
-].map(c => c.toJSON());
+.addUserOption(o =>
+o.setName("user").setDescription("User").setRequired(true)
+)
+.addChannelOption(o =>
+o.setName("ticket").setDescription("Ticket channel").setRequired(true)
+)
+.addStringOption(o =>
+o.setName("buying").setDescription("Buying").setRequired(true)
+)
+.addStringOption(o =>
+o.setName("theme").setDescription("Theme").setRequired(true)
+)
+.addStringOption(o =>
+o.setName("style").setDescription("Style").setRequired(true)
+)
+.addStringOption(o =>
+o.setName("mop").setDescription("MOP").setRequired(true)
+)
+.addStringOption(o =>
+o.setName("notes").setDescription("Notes").setRequired(true)
+)
+].map(cmd => cmd.toJSON());
 
 // ================= READY =================
 client.once("ready", async () => {
@@ -85,7 +99,7 @@ url: "https://twitch.tv/discord"
 status: "online"
 });
 
-// AUTO REGISTER COMMANDS (FIXED)
+// AUTO REGISTER COMMANDS
 try {
 const rest = new REST({ version: "10" }).setToken(TOKEN);
 
@@ -106,7 +120,7 @@ console.log("Command register error:", err);
 // ================= INTERACTIONS =================
 client.on("interactionCreate", async (interaction) => {
 
-// ================= PANEL =================
+// PANEL COMMAND
 if (interaction.isChatInputCommand() && interaction.commandName === "panel") {
 
 ```
@@ -128,7 +142,7 @@ return interaction.reply({
 
 }
 
-// ================= TICKET CREATE =================
+// CREATE TICKET
 if (interaction.isStringSelectMenu() && interaction.customId === "ticket_select") {
 
 ```
@@ -204,7 +218,7 @@ return interaction.reply({
 
 }
 
-// ================= CLOSE =================
+// CLOSE BUTTON
 if (interaction.isButton() && interaction.customId === "close_ticket") {
 
 ```
@@ -249,7 +263,7 @@ ephemeral: true
 });
 }
 
-// ================= QUEUE =================
+// QUEUE COMMAND
 if (interaction.isChatInputCommand() && interaction.commandName === "queue") {
 
 ```
@@ -302,7 +316,7 @@ return interaction.reply({
 
 }
 
-// ================= QUEUE BUTTONS =================
+// QUEUE BUTTONS
 if (interaction.isButton()) {
 
 ```
