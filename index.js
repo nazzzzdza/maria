@@ -4,7 +4,6 @@ Client,
 GatewayIntentBits,
 Partials,
 ChannelType,
-EmbedBuilder,
 ActionRowBuilder,
 StringSelectMenuBuilder,
 ButtonBuilder,
@@ -22,16 +21,14 @@ const app = express();
 app.get("/", (_, res) => res.send("Bot online"));
 app.listen(3000, () => console.log("Web server running"));
 
-// ================= CONFIG =================
+// ================= ENV =================
 const TOKEN = process.env.TOKEN;
 const CLIENT_ID = process.env.CLIENT_ID;
 const GUILD_ID = process.env.GUILD_ID;
 
 const CATEGORY_ID = "1387525349797269666";
-
 const STAFF_ROLE_ID = "1500489431918837861";
 const BOT_ROLE_ID = "1439161768223182859";
-
 const QUEUE_CHANNEL_ID = "1507132141316603955";
 
 // ================= SUPABASE =================
@@ -42,52 +39,71 @@ process.env.SUPABASE_KEY
 
 // ================= CLIENT =================
 const client = new Client({
-intents: [
-GatewayIntentBits.Guilds,
-GatewayIntentBits.GuildMessages,
-GatewayIntentBits.DirectMessages,
-GatewayIntentBits.MessageContent
-],
+intents: [GatewayIntentBits.Guilds, GatewayIntentBits.GuildMessages],
 partials: [Partials.Channel]
 });
 
-// ================= SLASH COMMANDS =================
+// ================= SLASH COMMANDS (SAFE) =================
 const commands = [
-new SlashCommandBuilder()
-.setName("panel")
-.setDescription("Open ticket panel"),
-
-new SlashCommandBuilder()
-.setName("queue")
-.setDescription("Create queue entry")
-.addUserOption(o =>
-o.setName("user").setDescription("User").setRequired(true)
-)
-.addChannelOption(o =>
-o.setName("ticket").setDescription("Ticket channel").setRequired(true)
-)
-.addStringOption(o =>
-o.setName("buying").setDescription("Buying").setRequired(true)
-)
-.addStringOption(o =>
-o.setName("theme").setDescription("Theme").setRequired(true)
-)
-.addStringOption(o =>
-o.setName("style").setDescription("Style").setRequired(true)
-)
-.addStringOption(o =>
-o.setName("mop").setDescription("MOP").setRequired(true)
-)
-.addStringOption(o =>
-o.setName("notes").setDescription("Notes").setRequired(true)
-)
-].map(cmd => cmd.toJSON());
+{
+name: "panel",
+description: "Open ticket panel"
+},
+{
+name: "queue",
+description: "Create queue entry",
+options: [
+{
+name: "user",
+type: 6,
+description: "User",
+required: true
+},
+{
+name: "ticket",
+type: 7,
+description: "Ticket channel",
+required: true
+},
+{
+name: "buying",
+type: 3,
+description: "Buying",
+required: true
+},
+{
+name: "theme",
+type: 3,
+description: "Theme",
+required: true
+},
+{
+name: "style",
+type: 3,
+description: "Style",
+required: true
+},
+{
+name: "mop",
+type: 3,
+description: "MOP",
+required: true
+},
+{
+name: "notes",
+type: 3,
+description: "Notes",
+required: true
+}
+]
+}
+];
 
 // ================= READY =================
 client.once("ready", async () => {
 console.log(`Logged in as ${client.user.tag}`);
 
-// STREAMING STATUS
+// STATUS
 client.user.setPresence({
 activities: [
 {
@@ -99,7 +115,7 @@ url: "https://twitch.tv/discord"
 status: "online"
 });
 
-// AUTO REGISTER COMMANDS
+// REGISTER COMMANDS (SAFE RAW VERSION)
 try {
 const rest = new REST({ version: "10" }).setToken(TOKEN);
 
@@ -120,7 +136,7 @@ console.log("Command register error:", err);
 // ================= INTERACTIONS =================
 client.on("interactionCreate", async (interaction) => {
 
-// PANEL COMMAND
+// PANEL
 if (interaction.isChatInputCommand() && interaction.commandName === "panel") {
 
 ```
@@ -142,30 +158,15 @@ return interaction.reply({
 
 }
 
-// CREATE TICKET
+// TICKET CREATE
 if (interaction.isStringSelectMenu() && interaction.customId === "ticket_select") {
 
 ```
 const type = interaction.values[0];
 const user = interaction.user;
 
-const existing = await supabase
-  .from("tickets")
-  .select("*")
-  .eq("user_id", user.id)
-  .eq("open", true);
-
-if (existing.data?.length > 0) {
-  return interaction.reply({
-    content: "You already have a ticket open",
-    ephemeral: true
-  });
-}
-
-const channelName = (type + "-" + user.username).toLowerCase();
-
 const channel = await interaction.guild.channels.create({
-  name: channelName,
+  name: `${type}-${user.username}`.toLowerCase(),
   type: ChannelType.GuildText,
   parent: CATEGORY_ID,
   permissionOverwrites: [
@@ -175,10 +176,7 @@ const channel = await interaction.guild.channels.create({
     },
     {
       id: user.id,
-      allow: [
-        PermissionsBitField.Flags.ViewChannel,
-        PermissionsBitField.Flags.SendMessages
-      ]
+      allow: [PermissionsBitField.Flags.ViewChannel, PermissionsBitField.Flags.SendMessages]
     },
     {
       id: STAFF_ROLE_ID,
@@ -198,7 +196,7 @@ await supabase.from("tickets").insert({
   open: true
 });
 
-const closeBtn = new ActionRowBuilder().addComponents(
+const row = new ActionRowBuilder().addComponents(
   new ButtonBuilder()
     .setCustomId("close_ticket")
     .setLabel("Close")
@@ -207,7 +205,7 @@ const closeBtn = new ActionRowBuilder().addComponents(
 
 await channel.send({
   content: "please type `.text` to start your order",
-  components: [closeBtn]
+  components: [row]
 });
 
 return interaction.reply({
@@ -218,49 +216,32 @@ return interaction.reply({
 
 }
 
-// CLOSE BUTTON
+// CLOSE FLOW
 if (interaction.isButton() && interaction.customId === "close_ticket") {
-
-```
-const row = new ActionRowBuilder().addComponents(
-  new ButtonBuilder()
-    .setCustomId("close_yes")
-    .setLabel("Yes")
-    .setStyle(ButtonStyle.Danger),
-
-  new ButtonBuilder()
-    .setCustomId("close_no")
-    .setLabel("No")
-    .setStyle(ButtonStyle.Secondary)
-);
-
 return interaction.reply({
-  content: "Are you sure?",
-  components: [row],
-  ephemeral: true
+content: "Are you sure?",
+components: [
+new ActionRowBuilder().addComponents(
+new ButtonBuilder()
+.setCustomId("close_yes")
+.setLabel("Yes")
+.setStyle(ButtonStyle.Danger),
+new ButtonBuilder()
+.setCustomId("close_no")
+.setLabel("No")
+.setStyle(ButtonStyle.Secondary)
+)
+],
+ephemeral: true
 });
-```
-
 }
 
 if (interaction.customId === "close_yes") {
-
-```
-await supabase
-  .from("tickets")
-  .update({ open: false })
-  .eq("channel_id", interaction.channel.id);
-
 await interaction.channel.delete().catch(() => {});
-```
-
 }
 
 if (interaction.customId === "close_no") {
-return interaction.reply({
-content: "Cancelled",
-ephemeral: true
-});
+return interaction.reply({ content: "Cancelled", ephemeral: true });
 }
 
 // QUEUE COMMAND
@@ -308,10 +289,7 @@ await supabase.from("queues").insert({
   open: true
 });
 
-return interaction.reply({
-  content: "Queue created",
-  ephemeral: true
-});
+return interaction.reply({ content: "Queue created", ephemeral: true });
 ```
 
 }
@@ -338,7 +316,6 @@ await supabase
   .eq("message_id", interaction.message.id);
 
 if (status === "completed") {
-
   const row = await supabase
     .from("queues")
     .select("*")
