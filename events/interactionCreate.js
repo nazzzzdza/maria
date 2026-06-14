@@ -196,5 +196,47 @@ if (interaction.customId === "close_no") {
 }
 
 
+// ---------------- MODAL SUBMIT ----------------
+if (
+  interaction.isModalSubmit() &&
+  interaction.customId === "order_modal"
+) {
+
+  const buying = interaction.fields.getTextInputValue("buying");
+  const theme = interaction.fields.getTextInputValue("theme");
+  const style = interaction.fields.getTextInputValue("style");
+  const mop = interaction.fields.getTextInputValue("mop");
+  const notes = interaction.fields.getTextInputValue("notes") || "none";
+
+  const embed = {
+    color: 0x1c1d23,
+    description:
+
+
+`order summary
+
+buying: ${buying}
+theme: ${theme}
+style: ${style}
+mop: ${mop}
+notes: ${notes}
+
+status: pending approval`
+};
+
+
+  return interaction.reply({
+    content: "order submitted successfully",
+    ephemeral: true
+  }).then(async () => {
+
+    await interaction.channel.send({
+      embeds: [embed]
+    });
+
+  }).catch(() => {});
+}
+
+  
 }
 };
