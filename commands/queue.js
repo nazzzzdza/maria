@@ -1,20 +1,20 @@
-const {
-ActionRowBuilder,
-ButtonBuilder,
-ButtonStyle
-} = require("discord.js");
+const { SlashCommandBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle } = require("discord.js");
 
-const { createClient } = require("@supabase/supabase-js");
+module.exports = {
+data: new SlashCommandBuilder()
+.setName("queue")
+.setDescription("Create queue entry")
+.addUserOption(o => o.setName("user").setDescription("User").setRequired(true))
+.addChannelOption(o => o.setName("ticket").setDescription("Ticket channel").setRequired(true))
+.addStringOption(o => o.setName("buying").setDescription("Buying").setRequired(true))
+.addStringOption(o => o.setName("theme").setDescription("Theme").setRequired(true))
+.addStringOption(o => o.setName("style").setDescription("Style").setRequired(true))
+.addStringOption(o => o.setName("mop").setDescription("MOP").setRequired(true))
+.addStringOption(o => o.setName("notes").setDescription("Notes").setRequired(true)),
 
-const supabase = createClient(
-process.env.SUPABASE_URL,
-process.env.SUPABASE_KEY
-);
+async execute(interaction) {
 
-const QUEUE_CHANNEL_ID = "1507132141316603955";
-
-async function createQueue(interaction) {
-
+```
 const user = interaction.options.getUser("user");
 const ticket = interaction.options.getChannel("ticket");
 
@@ -24,69 +24,33 @@ const style = interaction.options.getString("style");
 const mop = interaction.options.getString("mop");
 const notes = interaction.options.getString("notes");
 
-const queueChannel =
-await interaction.guild.channels.fetch(
-QUEUE_CHANNEL_ID
+const channel = await interaction.guild.channels.fetch("1507132141316603955");
+
+const row = new ActionRowBuilder().addComponents(
+  new ButtonBuilder().setCustomId("queue_noted").setLabel("Noted").setStyle(ButtonStyle.Secondary),
+  new ButtonBuilder().setCustomId("queue_processing").setLabel("Processing").setStyle(ButtonStyle.Secondary),
+  new ButtonBuilder().setCustomId("queue_completed").setLabel("Completed").setStyle(ButtonStyle.Success)
 );
 
-const buttons = new ActionRowBuilder()
-.addComponents(
-new ButtonBuilder()
-.setCustomId("queue_noted")
-.setLabel("Noted")
-.setStyle(ButtonStyle.Secondary),
-
-```
-  new ButtonBuilder()
-    .setCustomId("queue_processing")
-    .setLabel("Processing")
-    .setStyle(ButtonStyle.Secondary),
-
-  new ButtonBuilder()
-    .setCustomId("queue_completed")
-    .setLabel("Completed")
-    .setStyle(ButtonStyle.Secondary)
-);
+const msg =
 ```
 
-const content =
-`_ _   ⁺  ⌦　　𓈒  𖨂໑  ˖ _ _           ❛ ❒　\`🎹` 𓂅　  order   for   ${user}
--# _ _   ${user}'s   order,   do `.done` now
--# _ _     ${ticket}
-_ _　˙ 　　　　.　　　˚　　　　۫  　 𓈒
-_ _            ＋　❛　▩ 　❀　  **buying:** ${buying}
-_ _ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎‎  ◝ ✧𓂅    `🎬`    ,    **theme:** ${theme}
-_ _            ＋　❛　▩ 　❀　  **style:** ${style}
-_ _ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎‎  ◝ ✧𓂅    `🎤`    ,    **mop:** ${mop}
-_ _            ＋　❛　▩ 　❀　  **notes:**
-${notes}
-_ _　˙ 　　　　.　　　˚　　　　۫  　 𓈒`;
+`order for ${user}
+ticket: ${ticket}
+buying: ${buying}
+theme: ${theme}
+style: ${style}
+mop: ${mop}
+notes: ${notes}`;
 
-const msg = await queueChannel.send({
-content,
-components: [buttons]
+```
+await channel.send({
+  content: msg,
+  components: [row]
 });
 
-await supabase
-.from("queues")
-.insert({
-user_id: user.id,
-ticket_channel_id: ticket.id,
-buying,
-theme,
-style,
-mop,
-notes,
-status: "noted",
-message_id: msg.id
-});
+await interaction.reply({ content: "queue created", ephemeral: true });
+```
 
-await interaction.reply({
-content: "queue entry created.",
-ephemeral: true
-});
 }
-
-module.exports = {
-createQueue
 };
