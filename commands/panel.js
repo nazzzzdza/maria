@@ -16,12 +16,11 @@ new StringSelectMenuBuilder()
 ])
 );
 
-```
+
 await interaction.reply({
   content: "Ticket panel",
   components: [row]
 });
-```
 
 }
 };
