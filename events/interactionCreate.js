@@ -2,6 +2,11 @@ const {
 ActionRowBuilder,
 ButtonBuilder,
 ButtonStyle,
+EmbedBuilder,
+ModalBuilder,
+TextInputBuilder,
+TextInputStyle,
+PermissionsBitField,
 ChannelType
 } = require("discord.js");
 
@@ -14,23 +19,21 @@ name: "interactionCreate",
 async execute(interaction, client) {
 
 
-// COMMAND HANDLER
+// ---------------- COMMANDS ----------------
 if (interaction.isChatInputCommand()) {
   const cmd = client.commands.get(interaction.commandName);
   if (!cmd) return;
   return cmd.execute(interaction, client);
 }
 
-// TICKET DROPDOWN
+// ---------------- TICKET CREATE ----------------
 if (
   interaction.isStringSelectMenu() &&
   interaction.customId === "ticket_select"
 ) {
-
   await interaction.deferReply({ ephemeral: true });
 
   try {
-
     const type = interaction.values[0];
     const user = interaction.user;
 
@@ -40,112 +43,158 @@ if (
       parent: CATEGORY_ID
     });
 
-    // Hide from everyone
-    await channel.permissionOverwrites.edit(
-      interaction.guild.id,
-      {
-        ViewChannel: false
-      }
-    );
+    await channel.permissionOverwrites.edit(interaction.guild.id, {
+      ViewChannel: false
+    });
 
-    // Ticket creator
-    await channel.permissionOverwrites.edit(
-      user.id,
-      {
-        ViewChannel: true,
-        SendMessages: true,
-        ReadMessageHistory: true
-      }
-    );
+    await channel.permissionOverwrites.edit(user.id, {
+      ViewChannel: true,
+      SendMessages: true,
+      ReadMessageHistory: true
+    });
 
-    // Staff role
-    await channel.permissionOverwrites.edit(
-      STAFF_ROLE_ID,
-      {
-        ViewChannel: true,
-        SendMessages: true,
-        ReadMessageHistory: true
-      }
-    );
+    await channel.permissionOverwrites.edit(STAFF_ROLE_ID, {
+      ViewChannel: true,
+      SendMessages: true,
+      ReadMessageHistory: true
+    });
 
+    // ---------------- WELCOME EMBED ----------------
+    const embed = new EmbedBuilder()
+      .setColor("#1c1d23")
+      .setDescription(
+
+
+`.　  ✦　  ˚  　⊹  　˖　  ❜
+(˶•ᴗ•)⌒)ↄ   ❥୧    welcome
+
+_ _      ˚❒ ⠀ ⤷☒⠀⠀𖥨🍓
+please submit your order below
+
+_ _      staff will review it
+before it is added to the queue
+
+.　  ✦　  ˚  　⊹  　˖　  ❜`
+);
+
+
+    // ---------------- BUTTONS ----------------
     const row = new ActionRowBuilder().addComponents(
       new ButtonBuilder()
+        .setCustomId("submit_order")
+        .setLabel("submit order")
+        .setStyle(ButtonStyle.Secondary),
+
+      new ButtonBuilder()
         .setCustomId("close_ticket")
-        .setLabel("Close")
+        .setLabel("close")
         .setStyle(ButtonStyle.Secondary)
     );
 
     await channel.send({
-      content: "please type `.text` to start your order",
+      content: `<@${user.id}>`,
+      embeds: [embed],
       components: [row]
     });
 
-    await interaction.editReply({
-      content: `Ticket created: ${channel}`
+    return interaction.editReply({
+      content: `ticket created: ${channel}`
     });
 
   } catch (err) {
-
-    console.error("TICKET ERROR:", err);
-
-    await interaction.editReply({
-      content: "❌ Failed to create ticket."
-    }).catch(() => {});
+    console.error(err);
+    return interaction.editReply({
+      content: "failed to create ticket"
+    });
   }
-
-  return;
 }
 
-// CLOSE BUTTON
+// ---------------- SUBMIT ORDER (MODAL) ----------------
+if (
+  interaction.isButton() &&
+  interaction.customId === "submit_order"
+) {
+
+  const modal = new ModalBuilder()
+    .setCustomId("order_modal")
+    .setTitle("order form");
+
+  const buying = new TextInputBuilder()
+    .setCustomId("buying")
+    .setLabel("buying")
+    .setStyle(TextInputStyle.Short)
+    .setRequired(true);
+
+  const theme = new TextInputBuilder()
+    .setCustomId("theme")
+    .setLabel("theme")
+    .setStyle(TextInputStyle.Short)
+    .setRequired(true);
+
+  const style = new TextInputBuilder()
+    .setCustomId("style")
+    .setLabel("style")
+    .setStyle(TextInputStyle.Short)
+    .setRequired(true);
+
+  const mop = new TextInputBuilder()
+    .setCustomId("mop")
+    .setLabel("mop")
+    .setStyle(TextInputStyle.Short)
+    .setRequired(true);
+
+  const notes = new TextInputBuilder()
+    .setCustomId("notes")
+    .setLabel("notes")
+    .setStyle(TextInputStyle.Paragraph)
+    .setRequired(false);
+
+  modal.addComponents(
+    new ActionRowBuilder().addComponents(buying),
+    new ActionRowBuilder().addComponents(theme),
+    new ActionRowBuilder().addComponents(style),
+    new ActionRowBuilder().addComponents(mop),
+    new ActionRowBuilder().addComponents(notes)
+  );
+
+  return interaction.showModal(modal);
+}
+
+// ---------------- CLOSE CONFIRM ----------------
 if (
   interaction.isButton() &&
   interaction.customId === "close_ticket"
 ) {
-
   return interaction.reply({
-    content: "Are you sure?",
+    content: "are you sure?",
     ephemeral: true,
     components: [
       new ActionRowBuilder().addComponents(
         new ButtonBuilder()
           .setCustomId("close_yes")
-          .setLabel("Yes")
-          .setStyle(ButtonStyle.Danger),
+          .setLabel("yes")
+          .setStyle(ButtonStyle.Secondary),
 
         new ButtonBuilder()
           .setCustomId("close_no")
-          .setLabel("No")
+          .setLabel("no")
           .setStyle(ButtonStyle.Secondary)
       )
     ]
   });
 }
 
-// CONFIRM DELETE
-if (
-  interaction.isButton() &&
-  interaction.customId === "close_yes"
-) {
-
-  await interaction.reply({
-    content: "Closing ticket...",
-    ephemeral: true
-  });
-
+if (interaction.customId === "close_yes") {
   return interaction.channel.delete().catch(() => {});
 }
 
-// CANCEL DELETE
-if (
-  interaction.isButton() &&
-  interaction.customId === "close_no"
-) {
-
+if (interaction.customId === "close_no") {
   return interaction.reply({
-    content: "Cancelled",
+    content: "cancelled",
     ephemeral: true
   });
 }
+
 
 }
 };
