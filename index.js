@@ -1,114 +1,88 @@
+const express = require("express");
+const fs = require("fs");
+const path = require("path");
 const {
-  ActionRowBuilder,
-  ButtonBuilder,
-  ButtonStyle,
-  PermissionsBitField,
-  ChannelType
+  Client,
+  GatewayIntentBits,
+  Partials,
+  REST,
+  Routes
 } = require("discord.js");
 
-const CATEGORY_ID = "1387525349797269666";
-const STAFF_ROLE_ID = "1500489431918837861";
-const BOT_ROLE_ID = "1439161768223182859";
+const app = express();
+app.get("/", (_, res) => res.send("Bot online"));
+app.listen(process.env.PORT || 3000, () =>
+  console.log("Web server running")
+);
 
-module.exports = {
-  name: "interactionCreate",
+const client = new Client({
+  intents: [GatewayIntentBits.Guilds],
+  partials: [Partials.Channel]
+});
 
-  async execute(interaction, client) {
+client.commands = new Map();
+const commands = [];
 
-    // SLASH COMMANDS
-    if (interaction.isChatInputCommand()) {
-      const command = client.commands.get(interaction.commandName);
-      if (!command) return;
-      return command.execute(interaction, client);
+try {
+  const cmdPath = path.join(__dirname, "commands");
+
+  if (fs.existsSync(cmdPath)) {
+    for (const file of fs.readdirSync(cmdPath).filter(f => f.endsWith(".js"))) {
+      const cmd = require(`./commands/${file}`);
+      client.commands.set(cmd.data.name, cmd);
+      commands.push(cmd.data.toJSON());
     }
+  } else {
+    console.log("No commands folder found");
+  }
 
-    // PANEL DROPDOWN
-    if (interaction.isStringSelectMenu() && interaction.customId === "ticket_select") {
-      try {
-        const type = interaction.values[0];
+} catch (err) {
+  console.error("Command load error:", err);
+}
 
-        const channel = await interaction.guild.channels.create({
-          name: `${type}-${interaction.user.username}`.toLowerCase(),
-          type: ChannelType.GuildText,
-          parent: CATEGORY_ID,
-          permissionOverwrites: [
-            {
-              id: interaction.guild.id,
-              deny: [PermissionsBitField.Flags.ViewChannel]
-            },
-            {
-              id: interaction.user.id,
-              allow: [
-                PermissionsBitField.Flags.ViewChannel,
-                PermissionsBitField.Flags.SendMessages
-              ]
-            },
-            {
-              id: STAFF_ROLE_ID,
-              allow: [PermissionsBitField.Flags.ViewChannel]
-            },
-            {
-              id: BOT_ROLE_ID,
-              allow: [PermissionsBitField.Flags.ViewChannel]
-            }
-          ]
-        });
+try {
+  const eventPath = path.join(__dirname, "events");
 
-        const row = new ActionRowBuilder().addComponents(
-          new ButtonBuilder()
-            .setCustomId("close_ticket")
-            .setLabel("Close")
-            .setStyle(ButtonStyle.Secondary)
-        );
+  if (fs.existsSync(eventPath)) {
+    for (const file of fs.readdirSync(eventPath).filter(f => f.endsWith(".js"))) {
+      const event = require(`./events/${file}`);
 
-        await channel.send({
-          content: "please type `.text` to start your order",
-          components: [row]
-        });
-
-        return interaction.reply({
-          content: "Ticket created",
-          ephemeral: true
-        });
-
-      } catch (err) {
-        console.error("Ticket error:", err);
-        return interaction.reply({
-          content: "Error creating ticket.",
-          ephemeral: true
-        });
+      if (event.once) {
+        client.once(event.name, (...args) => event.execute(...args, client));
+      } else {
+        client.on(event.name, (...args) => event.execute(...args, client));
       }
     }
-
-    // CLOSE BUTTON
-    if (interaction.isButton() && interaction.customId === "close_ticket") {
-      return interaction.reply({
-        content: "Are you sure?",
-        components: [
-          new ActionRowBuilder().addComponents(
-            new ButtonBuilder()
-              .setCustomId("close_yes")
-              .setLabel("Yes")
-              .setStyle(ButtonStyle.Danger),
-            new ButtonBuilder()
-              .setCustomId("close_no")
-              .setLabel("No")
-              .setStyle(ButtonStyle.Secondary)
-          )
-        ],
-        ephemeral: true
-      });
-    }
-
-    if (interaction.customId === "close_yes") {
-      return interaction.channel.delete().catch(() => {});
-    }
-
-    if (interaction.customId === "close_no") {
-      return interaction.reply({
-        content: "Cancelled",
-        ephemeral: true
-      });
-    }
   }
-};
+} catch (err) {
+  console.error("Event load error:", err);
+}
+
+client.once("ready", async () => {
+  console.log(`Logged in as ${client.user.tag}`);
+
+  client.user.setPresence({
+    activities: [{ name: "tickets & queue", type: 3 }],
+    status: "online"
+  });
+
+  try {
+    const rest = new REST({ version: "10" }).setToken(process.env.TOKEN);
+
+    console.log("Deploying slash commands...");
+
+    await rest.put(
+      Routes.applicationGuildCommands(
+        process.env.CLIENT_ID,
+        process.env.GUILD_ID
+      ),
+      { body: commands }
+    );
+
+    console.log("Slash commands deployed");
+  } catch (err) {
+    console.error("Deploy error:", err);
+  }
+});
+
+client.login(process.env.TOKEN);
