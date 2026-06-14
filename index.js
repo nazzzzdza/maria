@@ -56,7 +56,7 @@ status: "online"
 try {
 const rest = new REST({ version: "10" }).setToken(process.env.TOKEN);
 
-```
+
 console.log("Deploying slash commands...");
 
 await rest.put(
@@ -68,7 +68,7 @@ await rest.put(
 );
 
 console.log("Slash commands deployed");
-```
+
 
 } catch (err) {
 console.error("Deploy error:", err);
