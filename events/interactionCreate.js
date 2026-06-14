@@ -15,21 +15,21 @@ module.exports = {
 
   async execute(interaction, client) {
 
-    // COMMAND HANDLER
+    // COMMANDS
     if (interaction.isChatInputCommand()) {
-      const command = client.commands.get(interaction.commandName);
-      if (!command) return;
-      return command.execute(interaction, client);
+      const cmd = client.commands.get(interaction.commandName);
+      if (!cmd) return;
+      return cmd.execute(interaction, client);
     }
 
-    // TICKET PANEL
+    // PANEL DROPDOWN → CREATE TICKET
     if (interaction.isStringSelectMenu() && interaction.customId === "ticket_select") {
 
       const type = interaction.values[0];
       const user = interaction.user;
 
       const channel = await interaction.guild.channels.create({
-        name: (type + "-" + user.username).toLowerCase(),
+        name: `${type}-${user.username}`.toLowerCase(),
         type: ChannelType.GuildText,
         parent: CATEGORY_ID,
         permissionOverwrites: [
@@ -41,7 +41,8 @@ module.exports = {
             id: user.id,
             allow: [
               PermissionsBitField.Flags.ViewChannel,
-              PermissionsBitField.Flags.SendMessages
+              PermissionsBitField.Flags.SendMessages,
+              PermissionsBitField.Flags.ReadMessageHistory
             ]
           },
           {
@@ -63,21 +64,22 @@ module.exports = {
       );
 
       await channel.send({
-        content: "please type `.text` to start your order",
+        content: `Ticket opened for <@${user.id}>`,
         components: [row]
       });
 
       return interaction.reply({
-        content: "Ticket created",
+        content: `Ticket created: ${channel}`,
         ephemeral: true
       });
     }
 
-    // CLOSE BUTTON
+    // CLOSE BUTTON → CONFIRM
     if (interaction.isButton() && interaction.customId === "close_ticket") {
 
       return interaction.reply({
         content: "Are you sure?",
+        ephemeral: true,
         components: [
           new ActionRowBuilder().addComponents(
             new ButtonBuilder()
@@ -89,8 +91,7 @@ module.exports = {
               .setLabel("No")
               .setStyle(ButtonStyle.Secondary)
           )
-        ],
-        ephemeral: true
+        ]
       });
     }
 
@@ -103,6 +104,30 @@ module.exports = {
         content: "Cancelled",
         ephemeral: true
       });
+    }
+
+    // QUEUE BUTTONS
+    if (interaction.customId === "noted") {
+      if (!interaction.member.roles.cache.has(STAFF_ROLE_ID)) return;
+      return interaction.reply({ content: "marked as noted", ephemeral: true });
+    }
+
+    if (interaction.customId === "processing") {
+      if (!interaction.member.roles.cache.has(STAFF_ROLE_ID)) return;
+      return interaction.reply({ content: "processing order", ephemeral: true });
+    }
+
+    if (interaction.customId === "completed") {
+      if (!interaction.member.roles.cache.has(STAFF_ROLE_ID)) return;
+
+      const userMention = interaction.message.content?.match(/<@(\d+)>/);
+
+      if (userMention) {
+        const userId = userMention[1];
+        await interaction.channel.send(`your order has been completed <@${userId}>`);
+      }
+
+      return interaction.reply({ content: "marked as completed", ephemeral: true });
     }
   }
 };
