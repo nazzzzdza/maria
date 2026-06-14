@@ -12,6 +12,7 @@ data: new SlashCommandBuilder()
 
 async execute(interaction) {
 
+
 const embed = new EmbedBuilder()
   .setColor("#1c1d23")
   .setDescription(
@@ -22,18 +23,18 @@ const embed = new EmbedBuilder()
 .　  ✦　  ˚  　⊹  　˖　  ❜`
 );
 
-```
+
 const row = new ActionRowBuilder().addComponents(
   new StringSelectMenuBuilder()
     .setCustomId("ticket_select")
     .setPlaceholder("Open a ticket")
     .addOptions(
       {
-        label: "buying",
+        label: "Buying",
         value: "buying"
       },
       {
-        label: "linking",
+        label: "Linking",
         value: "linking"
       }
     )
@@ -43,6 +44,7 @@ return interaction.reply({
   embeds: [embed],
   components: [row]
 });
+```
 
 }
 };
