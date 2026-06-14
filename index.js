@@ -21,10 +21,10 @@ partials: [Partials.Channel]
 client.commands = new Map();
 
 // Load commands
-const commandsPath = path.join(__dirname, "commands");
-const commandFiles = fs.readdirSync(commandsPath).filter(f => f.endsWith(".js"));
-
 const commands = [];
+
+const commandPath = path.join(__dirname, "commands");
+const commandFiles = fs.readdirSync(commandPath).filter(f => f.endsWith(".js"));
 
 for (const file of commandFiles) {
 const cmd = require(`./commands/${file}`);
@@ -33,8 +33,8 @@ commands.push(cmd.data.toJSON());
 }
 
 // Load events
-const eventsPath = path.join(__dirname, "events");
-const eventFiles = fs.readdirSync(eventsPath).filter(f => f.endsWith(".js"));
+const eventPath = path.join(__dirname, "events");
+const eventFiles = fs.readdirSync(eventPath).filter(f => f.endsWith(".js"));
 
 for (const file of eventFiles) {
 const event = require(`./events/${file}`);
@@ -45,7 +45,6 @@ client.on(event.name, (...args) => event.execute(...args, client));
 }
 }
 
-// AUTO DEPLOY SLASH COMMANDS (THIS FIXES YOUR ISSUE)
 client.once("ready", async () => {
 console.log(`Logged in as ${client.user.tag}`);
 
@@ -72,8 +71,9 @@ console.log("Slash commands deployed");
 ```
 
 } catch (err) {
-console.log("Command deploy error:", err);
+console.error("Deploy error:", err);
 }
 });
 
 client.login(process.env.TOKEN);
+
