@@ -2,8 +2,7 @@ const {
   SlashCommandBuilder,
   ActionRowBuilder,
   StringSelectMenuBuilder,
-  EmbedBuilder,
-  PermissionsBitField
+  EmbedBuilder
 } = require("discord.js");
 
 module.exports = {
@@ -13,18 +12,8 @@ module.exports = {
 
   async execute(interaction) {
 
-    // Optional: restrict panel usage to staff only
-    const STAFF_ROLE_ID = "1500489431918837861";
-
-    if (!interaction.member.roles.cache.has(STAFF_ROLE_ID)) {
-      return interaction.reply({
-        content: "❌ You cannot use this command.",
-        ephemeral: true
-      });
-    }
-
     const embed = new EmbedBuilder()
-      .setTitle("🎫 Tickets")
+      .setTitle("🎫 Ticket Panel")
       .setDescription("Select a category below to open a ticket")
       .setColor(0x2b2d31);
 
@@ -33,16 +22,8 @@ module.exports = {
         .setCustomId("ticket_select")
         .setPlaceholder("Choose a ticket type")
         .addOptions(
-          {
-            label: "Buying",
-            value: "buying",
-            description: "Order a product / commission"
-          },
-          {
-            label: "Linking",
-            value: "linking",
-            description: "Link / support request"
-          }
+          { label: "Buying", value: "buying" },
+          { label: "Linking", value: "linking" }
         )
     );
 
