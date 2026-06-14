@@ -1,7 +1,13 @@
 const express = require("express");
 const fs = require("fs");
 const path = require("path");
-const { Client, GatewayIntentBits, Partials } = require("discord.js");
+const {
+Client,
+GatewayIntentBits,
+Partials,
+REST,
+Routes
+} = require("discord.js");
 
 const app = express();
 app.get("/", (_, res) => res.send("Bot online"));
@@ -18,9 +24,12 @@ client.commands = new Map();
 const commandsPath = path.join(__dirname, "commands");
 const commandFiles = fs.readdirSync(commandsPath).filter(f => f.endsWith(".js"));
 
+const commands = [];
+
 for (const file of commandFiles) {
-const command = require(`./commands/${file}`);
-client.commands.set(command.data.name, command);
+const cmd = require(`./commands/${file}`);
+client.commands.set(cmd.data.name, cmd);
+commands.push(cmd.data.toJSON());
 }
 
 // Load events
@@ -35,5 +44,36 @@ client.once(event.name, (...args) => event.execute(...args, client));
 client.on(event.name, (...args) => event.execute(...args, client));
 }
 }
+
+// AUTO DEPLOY SLASH COMMANDS (THIS FIXES YOUR ISSUE)
+client.once("ready", async () => {
+console.log(`Logged in as ${client.user.tag}`);
+
+client.user.setPresence({
+activities: [{ name: "handling commissions", type: 1 }],
+status: "online"
+});
+
+try {
+const rest = new REST({ version: "10" }).setToken(process.env.TOKEN);
+
+```
+console.log("Deploying slash commands...");
+
+await rest.put(
+  Routes.applicationGuildCommands(
+    process.env.CLIENT_ID,
+    process.env.GUILD_ID
+  ),
+  { body: commands }
+);
+
+console.log("Slash commands deployed");
+```
+
+} catch (err) {
+console.log("Command deploy error:", err);
+}
+});
 
 client.login(process.env.TOKEN);
