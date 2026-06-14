@@ -21,7 +21,7 @@ const client = new Client({
 client.commands = new Map();
 const commands = [];
 
-// load commands
+// LOAD COMMANDS
 const cmdPath = path.join(__dirname, "commands");
 for (const file of fs.readdirSync(cmdPath).filter(f => f.endsWith(".js"))) {
   const cmd = require(`./commands/${file}`);
@@ -29,7 +29,7 @@ for (const file of fs.readdirSync(cmdPath).filter(f => f.endsWith(".js"))) {
   commands.push(cmd.data.toJSON());
 }
 
-// load events
+// LOAD EVENTS
 const eventPath = path.join(__dirname, "events");
 for (const file of fs.readdirSync(eventPath).filter(f => f.endsWith(".js"))) {
   const event = require(`./events/${file}`);
@@ -40,12 +40,13 @@ for (const file of fs.readdirSync(eventPath).filter(f => f.endsWith(".js"))) {
   }
 }
 
-// deploy + login
 client.once("ready", async () => {
   console.log(`Logged in as ${client.user.tag}`);
 
   try {
     const rest = new REST({ version: "10" }).setToken(process.env.TOKEN);
+
+    console.log("Deploying slash commands...");
 
     await rest.put(
       Routes.applicationGuildCommands(
