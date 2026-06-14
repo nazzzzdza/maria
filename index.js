@@ -20,7 +20,6 @@ app.listen(3000, () => console.log("Web server running"));
 
 // ================= CONFIG =================
 const TOKEN = process.env.TOKEN;
-const CLIENT_ID = process.env.CLIENT_ID;
 
 const PANEL_CHANNEL_ID = "1407109105079943289";
 const CATEGORY_ID = "1387525349797269666";
@@ -51,21 +50,23 @@ partials: [Partials.Channel]
 client.once("ready", async () => {
 console.log(`Logged in as ${client.user.tag}`);
 
+// ⭐ CUSTOM STREAMING STATUS (YOUR TEXT HERE)
 client.user.setPresence({
 activities: [
 {
-name: "tickets & queue",
-type: 3
+name: "your orders & tickets",
+type: 1, // STREAMING
+url: "https://twitch.tv/discord"
 }
 ],
 status: "online"
 });
 });
 
-// ================= PANEL (TICKET DROPDOWN) =================
+// ================= INTERACTIONS =================
 client.on("interactionCreate", async (interaction) => {
 
-// ========== /panel ==========
+// ================= PANEL COMMAND =================
 if (interaction.isChatInputCommand() && interaction.commandName === "panel") {
 
 ```
@@ -80,14 +81,14 @@ const row = new ActionRowBuilder().addComponents(
 );
 
 return interaction.reply({
-  content: "ticket system",
+  content: "ticket panel",
   components: [row]
 });
 ```
 
 }
 
-// ========== TICKET CREATE ==========
+// ================= TICKET CREATE =================
 if (interaction.isStringSelectMenu() && interaction.customId === "ticket_select") {
 
 ```
@@ -107,7 +108,7 @@ if (existing.data && existing.data.length > 0) {
   });
 }
 
-const channelName = `${type}-${user.username}`.toLowerCase();
+const channelName = (type + "-" + user.username).toLowerCase();
 
 const channel = await interaction.guild.channels.create({
   name: channelName,
@@ -143,7 +144,7 @@ await supabase.from("tickets").insert({
   open: true
 });
 
-const closeRow = new ActionRowBuilder().addComponents(
+const closeBtn = new ActionRowBuilder().addComponents(
   new ButtonBuilder()
     .setCustomId("close_ticket")
     .setLabel("Close")
@@ -152,7 +153,7 @@ const closeRow = new ActionRowBuilder().addComponents(
 
 await channel.send({
   content: "please type `.text` to start your order",
-  components: [closeRow]
+  components: [closeBtn]
 });
 
 return interaction.reply({
@@ -163,7 +164,7 @@ return interaction.reply({
 
 }
 
-// ========== CLOSE BUTTON ==========
+// ================= CLOSE TICKET =================
 if (interaction.isButton() && interaction.customId === "close_ticket") {
 
 ```
@@ -188,16 +189,16 @@ return interaction.reply({
 
 }
 
-// ========== CONFIRM CLOSE ==========
+// ================= CONFIRM CLOSE =================
 if (interaction.isButton() && interaction.customId === "confirm_close_yes") {
 
 ```
-await interaction.channel.delete().catch(() => {});
-
 await supabase
   .from("tickets")
   .update({ open: false })
   .eq("channel_id", interaction.channel.id);
+
+await interaction.channel.delete().catch(() => {});
 ```
 
 }
@@ -209,12 +210,10 @@ ephemeral: true
 });
 }
 
-// ========== QUEUE BUTTONS ==========
+// ================= QUEUE BUTTONS =================
 if (interaction.isButton()) {
 
 ```
-const msg = interaction.message;
-
 if (!interaction.member.roles.cache.has(STAFF_ROLE_ID)) return;
 
 let status = null;
@@ -225,29 +224,25 @@ if (interaction.customId === "queue_completed") status = "completed";
 
 if (!status) return;
 
-await interaction.update({
-  components: msg.components
-});
-
-const data = await supabase
+await supabase
   .from("queues")
   .update({ status })
-  .eq("message_id", msg.id)
-  .select();
+  .eq("message_id", interaction.message.id);
+
+await interaction.deferUpdate();
 
 if (status === "completed") {
 
   const row = await supabase
     .from("queues")
     .select("*")
-    .eq("message_id", msg.id)
+    .eq("message_id", interaction.message.id)
     .single();
 
-  const channel = await interaction.guild.channels.fetch(
-    row.data.ticket_channel_id
-  );
+  const data = row.data;
 
-  const user = await client.users.fetch(row.data.user_id);
+  const channel = await client.channels.fetch(data.ticket_channel_id);
+  const user = await client.users.fetch(data.user_id);
 
   channel.send(`your order has been completed ${user}`);
 }
