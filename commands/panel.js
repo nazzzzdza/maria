@@ -44,7 +44,7 @@ return interaction.reply({
   embeds: [embed],
   components: [row]
 });
-```
+
 
 }
 };
