@@ -27,7 +27,6 @@ const TOKEN = process.env.TOKEN;
 const CLIENT_ID = process.env.CLIENT_ID;
 const GUILD_ID = process.env.GUILD_ID;
 
-const PANEL_CHANNEL_ID = "1407109105079943289";
 const CATEGORY_ID = "1387525349797269666";
 
 const STAFF_ROLE_ID = "1500489431918837861";
@@ -56,25 +55,25 @@ partials: [Partials.Channel]
 const commands = [
 new SlashCommandBuilder()
 .setName("panel")
-.setDescription("Send ticket panel"),
+.setDescription("Open ticket panel"),
 
 new SlashCommandBuilder()
 .setName("queue")
 .setDescription("Create queue entry")
 .addUserOption(o => o.setName("user").setDescription("User").setRequired(true))
 .addChannelOption(o => o.setName("ticket").setDescription("Ticket channel").setRequired(true))
-.addStringOption(o => o.setName("buying").setRequired(true))
-.addStringOption(o => o.setName("theme").setRequired(true))
-.addStringOption(o => o.setName("style").setRequired(true))
-.addStringOption(o => o.setName("mop").setRequired(true))
-.addStringOption(o => o.setName("notes").setRequired(true))
+.addStringOption(o => o.setName("buying").setDescription("Buying").setRequired(true))
+.addStringOption(o => o.setName("theme").setDescription("Theme").setRequired(true))
+.addStringOption(o => o.setName("style").setDescription("Style").setRequired(true))
+.addStringOption(o => o.setName("mop").setDescription("MOP").setRequired(true))
+.addStringOption(o => o.setName("notes").setDescription("Notes").setRequired(true))
 ].map(c => c.toJSON());
 
 // ================= READY =================
 client.once("ready", async () => {
 console.log(`Logged in as ${client.user.tag}`);
 
-// STATUS (STREAMING)
+// STREAMING STATUS
 client.user.setPresence({
 activities: [
 {
@@ -86,28 +85,35 @@ url: "https://twitch.tv/discord"
 status: "online"
 });
 
-// AUTO REGISTER COMMANDS (NO MORE MANUAL DEPLOY)
+// AUTO REGISTER COMMANDS (FIXED)
+try {
 const rest = new REST({ version: "10" }).setToken(TOKEN);
 
+```
 await rest.put(
-Routes.applicationGuildCommands(CLIENT_ID, GUILD_ID),
-{ body: commands }
+  Routes.applicationGuildCommands(CLIENT_ID, GUILD_ID),
+  { body: commands }
 );
 
 console.log("Slash commands registered");
+```
+
+} catch (err) {
+console.log("Command register error:", err);
+}
 });
 
 // ================= INTERACTIONS =================
 client.on("interactionCreate", async (interaction) => {
 
-// PANEL
+// ================= PANEL =================
 if (interaction.isChatInputCommand() && interaction.commandName === "panel") {
 
 ```
 const row = new ActionRowBuilder().addComponents(
   new StringSelectMenuBuilder()
     .setCustomId("ticket_select")
-    .setPlaceholder("Open ticket")
+    .setPlaceholder("Open a ticket")
     .addOptions([
       { label: "Buying", value: "buying" },
       { label: "Linking", value: "linking" }
@@ -122,7 +128,7 @@ return interaction.reply({
 
 }
 
-// TICKET CREATE
+// ================= TICKET CREATE =================
 if (interaction.isStringSelectMenu() && interaction.customId === "ticket_select") {
 
 ```
@@ -178,7 +184,7 @@ await supabase.from("tickets").insert({
   open: true
 });
 
-const row = new ActionRowBuilder().addComponents(
+const closeBtn = new ActionRowBuilder().addComponents(
   new ButtonBuilder()
     .setCustomId("close_ticket")
     .setLabel("Close")
@@ -187,7 +193,7 @@ const row = new ActionRowBuilder().addComponents(
 
 await channel.send({
   content: "please type `.text` to start your order",
-  components: [row]
+  components: [closeBtn]
 });
 
 return interaction.reply({
@@ -198,7 +204,7 @@ return interaction.reply({
 
 }
 
-// CLOSE BUTTON
+// ================= CLOSE =================
 if (interaction.isButton() && interaction.customId === "close_ticket") {
 
 ```
@@ -243,7 +249,7 @@ ephemeral: true
 });
 }
 
-// QUEUE COMMAND
+// ================= QUEUE =================
 if (interaction.isChatInputCommand() && interaction.commandName === "queue") {
 
 ```
@@ -296,7 +302,7 @@ return interaction.reply({
 
 }
 
-// QUEUE BUTTONS
+// ================= QUEUE BUTTONS =================
 if (interaction.isButton()) {
 
 ```
