@@ -13,6 +13,7 @@ data: new SlashCommandBuilder()
 async execute(interaction) {
 
 const embed = new EmbedBuilder()
+  .setColor("#1c1d23")
   .setDescription(
 
 
