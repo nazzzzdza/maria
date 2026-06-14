@@ -16,28 +16,43 @@ name: "interactionCreate",
 async execute(interaction, client) {
 
 ```
-// ================= COMMAND HANDLER =================
+// ================= COMMANDS =================
 if (interaction.isChatInputCommand()) {
   const command = client.commands.get(interaction.commandName);
   if (!command) return;
   return command.execute(interaction, client);
 }
 
-// ================= TICKET SYSTEM =================
+// ================= TICKET PANEL =================
 if (interaction.isStringSelectMenu() && interaction.customId === "ticket_select") {
 
   const type = interaction.values[0];
   const user = interaction.user;
 
   const channel = await interaction.guild.channels.create({
-    name: `${type}-${user.username}`.toLowerCase(),
+    name: (type + "-" + user.username).toLowerCase(),
     type: ChannelType.GuildText,
     parent: CATEGORY_ID,
     permissionOverwrites: [
-      { id: interaction.guild.id, deny: [PermissionsBitField.Flags.ViewChannel] },
-      { id: user.id, allow: [PermissionsBitField.Flags.ViewChannel, PermissionsBitField.Flags.SendMessages] },
-      { id: STAFF_ROLE_ID, allow: [PermissionsBitField.Flags.ViewChannel] },
-      { id: BOT_ROLE_ID, allow: [PermissionsBitField.Flags.ViewChannel] }
+      {
+        id: interaction.guild.id,
+        deny: [PermissionsBitField.Flags.ViewChannel]
+      },
+      {
+        id: user.id,
+        allow: [
+          PermissionsBitField.Flags.ViewChannel,
+          PermissionsBitField.Flags.SendMessages
+        ]
+      },
+      {
+        id: STAFF_ROLE_ID,
+        allow: [PermissionsBitField.Flags.ViewChannel]
+      },
+      {
+        id: BOT_ROLE_ID,
+        allow: [PermissionsBitField.Flags.ViewChannel]
+      }
     ]
   });
 
@@ -53,15 +68,24 @@ if (interaction.isStringSelectMenu() && interaction.customId === "ticket_select"
     components: [closeRow]
   });
 
-  return interaction.reply({ content: "Ticket created", ephemeral: true });
+  return interaction.reply({
+    content: "Ticket created",
+    ephemeral: true
+  });
 }
 
-// ================= CLOSE =================
+// ================= CLOSE BUTTON =================
 if (interaction.isButton() && interaction.customId === "close_ticket") {
 
   const row = new ActionRowBuilder().addComponents(
-    new ButtonBuilder().setCustomId("close_yes").setLabel("Yes").setStyle(ButtonStyle.Danger),
-    new ButtonBuilder().setCustomId("close_no").setLabel("No").setStyle(ButtonStyle.Secondary)
+    new ButtonBuilder()
+      .setCustomId("close_yes")
+      .setLabel("Yes")
+      .setStyle(ButtonStyle.Danger),
+    new ButtonBuilder()
+      .setCustomId("close_no")
+      .setLabel("No")
+      .setStyle(ButtonStyle.Secondary)
   );
 
   return interaction.reply({
@@ -76,7 +100,10 @@ if (interaction.customId === "close_yes") {
 }
 
 if (interaction.customId === "close_no") {
-  return interaction.reply({ content: "Cancelled", ephemeral: true });
+  return interaction.reply({
+    content: "Cancelled",
+    ephemeral: true
+  });
 }
 
 // ================= QUEUE BUTTONS =================
@@ -84,14 +111,13 @@ if (interaction.isButton()) {
 
   if (!interaction.member.roles.cache.has(STAFF_ROLE_ID)) return;
 
-  let msg = interaction.message;
-
   if (interaction.customId === "queue_completed") {
-    const text = msg.content;
-    const match = text.match(/ticket:\s*(.*)/);
+    const msg = interaction.message.content;
 
+    const match = msg.match(/ticket:\s*(.*)/);
     if (match) {
-      const channel = interaction.guild.channels.cache.find(c => c.id === match[1]);
+      const channelId = match[1];
+      const channel = interaction.guild.channels.cache.get(channelId);
       if (channel) channel.send("your order has been completed");
     }
   }
