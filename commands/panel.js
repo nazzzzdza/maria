@@ -12,31 +12,28 @@ data: new SlashCommandBuilder()
 
 async execute(interaction) {
 
-
+  
 const embed = new EmbedBuilder()
   .setColor("#1c1d23")
   .setDescription(
 
 
 `.　  ✦　  ˚  　⊹  　˖　  ❜
-      (˶•ᴗ•)⌒)ↄ   ❥୧    our   tickets _ _      ˚❒ ⠀ ⤷☒⠀⠀𖥨🍓    open  4  buying  or  linking
+(˶•ᴗ•)⌒)ↄ   ❥୧    our tickets
+
+_ _      ˚❒ ⠀ ⤷☒⠀⠀𖨂🍓
+open a ticket for buying or linking
+
 .　  ✦　  ˚  　⊹  　˖　  ❜`
 );
-
 
 const row = new ActionRowBuilder().addComponents(
   new StringSelectMenuBuilder()
     .setCustomId("ticket_select")
-    .setPlaceholder("Open a ticket")
+    .setPlaceholder("open a ticket")
     .addOptions(
-      {
-        label: "Buying",
-        value: "buying"
-      },
-      {
-        label: "Linking",
-        value: "linking"
-      }
+      { label: "buying", value: "buying" },
+      { label: "linking", value: "linking" }
     )
 );
 
