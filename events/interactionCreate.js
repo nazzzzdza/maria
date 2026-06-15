@@ -14,19 +14,22 @@ const CATEGORY_ID = "1387525349797269666";
 const STAFF_ROLE_ID = "1500489431918837861";
 const QUEUE_CHANNEL_ID = "1507132141316603955";
 
+const orders = new Map();
+
 module.exports = {
 name: "interactionCreate",
 
 async execute(interaction, client) {
 
 
+// ================= COMMANDS =================
 if (interaction.isChatInputCommand()) {
   const cmd = client.commands.get(interaction.commandName);
   if (!cmd) return;
   return cmd.execute(interaction, client);
 }
 
-// ================= PANEL =================
+// ================= PANEL SELECT =================
 if (interaction.isStringSelectMenu() && interaction.customId === "ticket_select") {
 
   await interaction.deferReply({ ephemeral: true });
@@ -39,15 +42,32 @@ if (interaction.isStringSelectMenu() && interaction.customId === "ticket_select"
     type: ChannelType.GuildText,
     parent: CATEGORY_ID,
     permissionOverwrites: [
-      { id: interaction.guild.id, deny: [PermissionsBitField.Flags.ViewChannel] },
-      { id: user.id, allow: [PermissionsBitField.Flags.ViewChannel, PermissionsBitField.Flags.SendMessages] },
-      { id: STAFF_ROLE_ID, allow: [PermissionsBitField.Flags.ViewChannel, PermissionsBitField.Flags.SendMessages] }
+      {
+        id: interaction.guild.id,
+        deny: [PermissionsBitField.Flags.ViewChannel]
+      },
+      {
+        id: user.id,
+        allow: [
+          PermissionsBitField.Flags.ViewChannel,
+          PermissionsBitField.Flags.SendMessages,
+          PermissionsBitField.Flags.ReadMessageHistory
+        ]
+      },
+      {
+        id: STAFF_ROLE_ID,
+        allow: [
+          PermissionsBitField.Flags.ViewChannel,
+          PermissionsBitField.Flags.SendMessages,
+          PermissionsBitField.Flags.ReadMessageHistory
+        ]
+      }
     ]
   });
 
   const embed = new EmbedBuilder()
     .setColor("#1c1d23")
-    .setDescription("ticket opened. use submit order below");
+    .setDescription("ticket opened — press submit order below");
 
   const row = new ActionRowBuilder().addComponents(
     new ButtonBuilder().setCustomId("submit_order").setLabel("submit order").setStyle(ButtonStyle.Secondary),
@@ -63,7 +83,7 @@ if (interaction.isStringSelectMenu() && interaction.customId === "ticket_select"
   return interaction.editReply({ content: `ticket created: ${channel}` });
 }
 
-// ================= MODAL OPEN =================
+// ================= OPEN MODAL =================
 if (interaction.isButton() && interaction.customId === "submit_order") {
 
   const modal = new ModalBuilder()
@@ -71,24 +91,24 @@ if (interaction.isButton() && interaction.customId === "submit_order") {
     .setTitle("order form");
 
   const fields = [
-    { id: "buying", label: "buying" },
-    { id: "theme", label: "theme" },
-    { id: "style", label: "style" },
-    { id: "mop", label: "mop" },
-    { id: "notes", label: "notes", optional: true }
+    ["buying", "buying", TextInputStyle.Short],
+    ["theme", "theme", TextInputStyle.Short],
+    ["style", "style", TextInputStyle.Short],
+    ["mop", "mop", TextInputStyle.Short],
+    ["notes", "notes", TextInputStyle.Paragraph]
   ];
 
-  const rows = fields.map(f =>
-    new ActionRowBuilder().addComponents(
-      new TextInputBuilder()
-        .setCustomId(f.id)
-        .setLabel(f.label)
-        .setStyle(f.id === "notes" ? TextInputStyle.Paragraph : TextInputStyle.Short)
-        .setRequired(!f.optional)
+  modal.addComponents(
+    ...fields.map(f =>
+      new ActionRowBuilder().addComponents(
+        new TextInputBuilder()
+          .setCustomId(f[0])
+          .setLabel(f[1])
+          .setStyle(f[2])
+          .setRequired(f[0] !== "notes")
+      )
     )
   );
-
-  modal.addComponents(...rows);
 
   return interaction.showModal(modal);
 }
@@ -104,26 +124,64 @@ if (interaction.isModalSubmit() && interaction.customId === "order_modal") {
     notes: interaction.fields.getTextInputValue("notes") || "none"
   };
 
-  const description =
-
-
-`_ _   ⁺  ⌦　　𓈒  𖨂໑  ˖ _ _           ❛ ❒　🎹 𓂅　  order for <@${interaction.user.id}>
--# _ _   ${interaction.user.username}'s order
--# _ _   ticket system _ _　˙ 　　　　.　　　˚　　　　۫ _ _            ＋　❛　▦ 　❀　  buying: ${data.buying} _ _            ＋　❛　▦ 　❀　  theme: ${data.theme} _ _            ＋　❛　▦ 　❀　  style: ${data.style} _ _            ＋　❛　▦ 　❀　  mop: ${data.mop} _ _            ＋　❛　▦ 　❀　  notes: ${data.notes}`;
-
+  orders.set(interaction.user.id, data);
 
   const embed = new EmbedBuilder()
     .setColor("#1c1d23")
-    .setDescription(description);
+    .addFields(
+      { name: "buying", value: data.buying },
+      { name: "theme", value: data.theme },
+      { name: "style", value: data.style },
+      { name: "mop", value: data.mop },
+      { name: "notes", value: data.notes }
+    )
+    .setFooter({ text: `order by ${interaction.user.username}` });
 
   const row = new ActionRowBuilder().addComponents(
     new ButtonBuilder().setCustomId("edit_order").setLabel("edit").setStyle(ButtonStyle.Secondary),
     new ButtonBuilder().setCustomId("approve_order").setLabel("approve").setStyle(ButtonStyle.Secondary)
   );
 
-  await interaction.channel.send({ embeds: [embed], components: [row] });
+  await interaction.channel.send({
+    content: `<@${interaction.user.id}> order submitted`,
+    embeds: [embed],
+    components: [row]
+  });
 
-  return interaction.reply({ content: "order submitted", ephemeral: true });
+  return interaction.reply({ content: "submitted", ephemeral: true });
+}
+
+// ================= EDIT ORDER =================
+if (interaction.isButton() && interaction.customId === "edit_order") {
+
+  const modal = new ModalBuilder()
+    .setCustomId("order_modal")
+    .setTitle("edit order");
+
+  const data = orders.get(interaction.user.id);
+
+  const fields = [
+    ["buying", data?.buying || ""],
+    ["theme", data?.theme || ""],
+    ["style", data?.style || ""],
+    ["mop", data?.mop || ""],
+    ["notes", data?.notes || ""]
+  ];
+
+  modal.addComponents(
+    ...fields.map(f =>
+      new ActionRowBuilder().addComponents(
+        new TextInputBuilder()
+          .setCustomId(f[0])
+          .setLabel(f[0])
+          .setStyle(f[0] === "notes" ? TextInputStyle.Paragraph : TextInputStyle.Short)
+          .setValue(f[1] || "")
+          .setRequired(f[0] !== "notes")
+      )
+    )
+  );
+
+  return interaction.showModal(modal);
 }
 
 // ================= APPROVE =================
@@ -135,13 +193,15 @@ if (interaction.isButton() && interaction.customId === "approve_order") {
 
   const queue = await interaction.guild.channels.fetch(QUEUE_CHANNEL_ID);
 
-  const approvedEmbed = EmbedBuilder.from(interaction.message.embeds[0])
+  const embed = interaction.message.embeds[0];
+
+  const approved = EmbedBuilder.from(embed)
     .setColor("#1c1d23")
-    .setDescription(interaction.message.embeds[0].description + "\n\nstatus: approved");
+    .addFields({ name: "status", value: "approved" });
 
   await queue.send({
-    content: `new approved order from <@${interaction.user.id}>`,
-    embeds: [approvedEmbed]
+    content: `approved order from <@${interaction.user.id}>`,
+    embeds: [approved]
   });
 
   return interaction.update({
@@ -152,6 +212,7 @@ if (interaction.isButton() && interaction.customId === "approve_order") {
 
 // ================= CLOSE =================
 if (interaction.isButton() && interaction.customId === "close_ticket") {
+
   return interaction.reply({
     content: "are you sure?",
     ephemeral: true,
