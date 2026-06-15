@@ -198,8 +198,8 @@ if (interaction.isButton() && interaction.customId === "edit_order") {
   return interaction.showModal(modal);
 }
 
-// ================= APPROVE  ORDER =================
-  
+// ================= APPROVE ORDER =================
+
 if (interaction.isButton() && interaction.customId === "approve_order") {
 
   if (!interaction.member.roles.cache.has(STAFF_ROLE_ID)) {
@@ -216,13 +216,31 @@ if (interaction.isButton() && interaction.customId === "approve_order") {
     "status: approved"
   );
 
+  const queueRow = new ActionRowBuilder().addComponents(
+    new ButtonBuilder()
+      .setCustomId("noted")
+      .setLabel("noted")
+      .setStyle(ButtonStyle.Secondary),
+
+    new ButtonBuilder()
+      .setCustomId("processing")
+      .setLabel("processing")
+      .setStyle(ButtonStyle.Secondary),
+
+    new ButtonBuilder()
+      .setCustomId("completed")
+      .setLabel("completed")
+      .setStyle(ButtonStyle.Secondary)
+  );
+
   await interaction.message.edit({
     content: approvedText,
     components: []
   });
 
   await queue.send({
-    content: approvedText
+    content: approvedText,
+    components: [queueRow]
   });
 
   return interaction.reply({
@@ -231,6 +249,33 @@ if (interaction.isButton() && interaction.customId === "approve_order") {
   });
 }
 
+
+// ================= QUEUE BUTTONS =================
+
+if (interaction.isButton() && interaction.customId === "noted") {
+
+  return interaction.update({
+    content: interaction.message.content + "\n\nnoted by " + interaction.user.username,
+    components: interaction.message.components
+  });
+}
+
+if (interaction.isButton() && interaction.customId === "processing") {
+
+  return interaction.update({
+    content: interaction.message.content + "\n\nprocessing by " + interaction.user.username,
+    components: interaction.message.components
+  });
+}
+
+if (interaction.isButton() && interaction.customId === "completed") {
+
+  return interaction.update({
+    content: interaction.message.content + "\n\ncompleted by " + interaction.user.username,
+    components: []
+  });
+}
+  
 // ================= CLOSE =================
 if (interaction.isButton() && interaction.customId === "close_ticket") {
 
