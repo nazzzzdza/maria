@@ -12,20 +12,11 @@ data: new SlashCommandBuilder()
 
 async execute(interaction) {
 
-  
+
 const embed = new EmbedBuilder()
   .setColor("#1c1d23")
-  .setDescription(
-
-
-`.　  ✦　  ˚  　⊹  　˖　  ❜
-(˶•ᴗ•)⌒)ↄ   ❥୧    our tickets
-
-_ _      ˚❒ ⠀ ⤷☒⠀⠀𖨂🍓
-open a ticket for buying or linking
-
-.　  ✦　  ˚  　⊹  　˖　  ❜`
-);
+  .setTitle("ticket panel")
+  .setDescription("choose an option below to open a ticket");
 
 const row = new ActionRowBuilder().addComponents(
   new StringSelectMenuBuilder()
