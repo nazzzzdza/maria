@@ -126,20 +126,20 @@ if (interaction.isModalSubmit() && interaction.customId === "order_modal") {
 
   orders.set(interaction.user.id, data);
 
-  const orderText = `
+const orderText = `
 _ _   ⁺  ⌦　　𓈒  𖨂໑  ˖
-_ _           ❛ ❒　🎹 𓂅　  order   for   <@${interaction.user.id}>
+_ _           ❛ ❒　\`🎹\` 𓂅　  order   for   <@1241259891423969343>
 
--# _ _   ${interaction.user.username}'s order, do \`.done\` now
--# _ _   ${interaction.channel}
+-# _ _   ${interaction.user.username}'s   order,   do \`.done\`  now
+-# _ _     ${interaction.channel}
 
 _ _　˙ 　　　　.　　　˚　　　　۫  　 𓈒
 
 _ _            ＋　❛　▩ 　❀　  __buying:__ ${data.buying}
-_ _ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎‎  ◝ ✧𓂅    🎬    ,    **theme:** ${data.theme}
+_ _ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎‎  ◝ ✧𓂅    \`🎬\`    ,    **theme:** ${data.theme}
 
 _ _            ＋　❛　▩ 　❀　  __style:__ ${data.style}
-_ _ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎‎  ◝ ✧𓂅    🎤    ,    **mop:** ${data.mop}
+_ _ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎‎  ◝ ✧𓂅    \`🎤\`    ,    **mop:** ${data.mop}
 
 _ _            ＋　❛　▩ 　❀　  __notes:__
 ${data.notes}
