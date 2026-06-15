@@ -126,16 +126,28 @@ if (interaction.isModalSubmit() && interaction.customId === "order_modal") {
 
   orders.set(interaction.user.id, data);
 
-  const embed = new EmbedBuilder()
-    .setColor("#1c1d23")
-    .addFields(
-      { name: "buying", value: data.buying },
-      { name: "theme", value: data.theme },
-      { name: "style", value: data.style },
-      { name: "mop", value: data.mop },
-      { name: "notes", value: data.notes }
-    )
-    .setFooter({ text: `order by ${interaction.user.username}` });
+  const orderText = `
+_ _   ⁺  ⌦　　𓈒  𖨂໑  ˖
+_ _           ❛ ❒　🎹 𓂅　  order   for   <@${interaction.user.id}>
+
+-# _ _   ${interaction.user.username}'s order, do \`.done\` now
+-# _ _   ${interaction.channel}
+
+_ _　˙ 　　　　.　　　˚　　　　۫  　 𓈒
+
+_ _            ＋　❛　▩ 　❀　  __buying:__ ${data.buying}
+_ _ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎‎  ◝ ✧𓂅    🎬    ,    **theme:** ${data.theme}
+
+_ _            ＋　❛　▩ 　❀　  __style:__ ${data.style}
+_ _ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎‎  ◝ ✧𓂅    🎤    ,    **mop:** ${data.mop}
+
+_ _            ＋　❛　▩ 　❀　  __notes:__
+${data.notes}
+
+_ _　˙ 　　　　.　　　˚　　　　۫  　 𓈒
+
+status: pending approval
+`;
 
   const row = new ActionRowBuilder().addComponents(
     new ButtonBuilder().setCustomId("edit_order").setLabel("edit").setStyle(ButtonStyle.Secondary),
@@ -143,12 +155,14 @@ if (interaction.isModalSubmit() && interaction.customId === "order_modal") {
   );
 
   await interaction.channel.send({
-    content: `<@${interaction.user.id}> order submitted`,
-    embeds: [embed],
+    content: orderText,
     components: [row]
   });
 
-  return interaction.reply({ content: "submitted", ephemeral: true });
+  return interaction.reply({
+    content: "submitted",
+    ephemeral: true
+  });
 }
 
 // ================= EDIT ORDER =================
@@ -184,29 +198,36 @@ if (interaction.isButton() && interaction.customId === "edit_order") {
   return interaction.showModal(modal);
 }
 
-// ================= APPROVE =================
+// ================= APPROVE  ORDER =================
+  
 if (interaction.isButton() && interaction.customId === "approve_order") {
 
   if (!interaction.member.roles.cache.has(STAFF_ROLE_ID)) {
-    return interaction.reply({ content: "no permission", ephemeral: true });
+    return interaction.reply({
+      content: "no permission",
+      ephemeral: true
+    });
   }
 
   const queue = await interaction.guild.channels.fetch(QUEUE_CHANNEL_ID);
 
-  const embed = interaction.message.embeds[0];
+  const approvedText = interaction.message.content.replace(
+    "status: pending approval",
+    "status: approved"
+  );
 
-  const approved = EmbedBuilder.from(embed)
-    .setColor("#1c1d23")
-    .addFields({ name: "status", value: "approved" });
-
-  await queue.send({
-    content: `approved order from <@${interaction.user.id}>`,
-    embeds: [approved]
+  await interaction.message.edit({
+    content: approvedText,
+    components: []
   });
 
-  return interaction.update({
+  await queue.send({
+    content: approvedText
+  });
+
+  return interaction.reply({
     content: "approved",
-    components: []
+    ephemeral: true
   });
 }
 
